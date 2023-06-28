@@ -79,7 +79,10 @@ fn main() {
             .write(true)
             .open(config_file)
             .unwrap();
-        config = serde_json::from_reader(&file).unwrap();
+        config = serde_json::from_reader(&file).unwrap_or_else(|_| {
+            println!("Failed to read config file, entering first time setup.");
+            setup::setup()
+        });
     } else {
         // Create the config file.
         println!("Config file does not exist, entering first time setup.");
@@ -110,7 +113,9 @@ fn main() {
         cmd = Command::new(&config.bin);
     }
     #[cfg(windows)]
-    cmd = Command::new(&config.bin);
+    {
+        cmd = Command::new(&config.bin);
+    }
     cmd.arg("run")
         .arg("-c")
         .arg(format!("servers/{}", server_file));
