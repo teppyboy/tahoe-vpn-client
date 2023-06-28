@@ -6,9 +6,24 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ctrlc = "3.4.0"
+flate2 = "1.0.26"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+tar = "0.4.38"
+tempfile = "3.6.0"
 text_io = "0.1.12"
-users = "0.11.0"
 which = "4.4.0"
+zip = "0.6.6"
+
+[target.'cfg(unix)'.dependencies]
+users = "0.11.0"
+
+[build-dependencies]
+winres = "0.1"
+
+[profile.release]
+strip = true  # Automatically strip symbols from the binary.
+codegen-units = 1
+panic = "abort"

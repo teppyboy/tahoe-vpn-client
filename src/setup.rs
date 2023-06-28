@@ -1,13 +1,18 @@
 use crate::config::Config;
+use flate2::read::GzDecoder;
 use reqwest::blocking as reqwest;
-use std::env;
-use std::fs::{create_dir, set_permissions, File, Permissions};
-use std::io;
-#[cfg(not(target_os = "windows"))]
+use std::fs::{create_dir, File};
+#[cfg(unix)]
+use std::fs::{set_permissions, Permissions};
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+use std::{env, io};
+use tar::Archive;
+use tempfile;
 use text_io::read;
 use which::which;
+use zip::ZipArchive;
 const OS: &str = env::consts::OS;
 
 fn go_arch() -> &'static str {
@@ -46,6 +51,7 @@ fn dl_sing_box() -> Result<String, String> {
             .get(url)
             .send()
             .expect("Failed to download sing-box.");
+        // Create directory.
         if !Path::new("bin").exists() {
             create_dir("bin").expect("Failed to create bin directory.");
         }
@@ -55,14 +61,43 @@ fn dl_sing_box() -> Result<String, String> {
         } else {
             file_name = "bin/sing-box";
         }
+        // Remove old executable.
         if Path::new(file_name).exists() {
             std::fs::remove_file(file_name).expect("Failed to remove old sing-box executable.");
         }
-        let mut file = File::create(file_name).expect("Failed to create sing-box executable.");
-        io::copy(&mut rsp, &mut file).expect("Failed to write sing-box executable.");
-        if OS != "windows" {
-            set_permissions(file_name, Permissions::from_mode(0o755)).unwrap();
+        // Extract in-memory
+        if name.contains(".tar.gz") {
+            // tar.gz
+            let decoder = GzDecoder::new(rsp);
+            let mut archive = Archive::new(decoder);
+            for entry in archive.entries().unwrap() {
+                let mut file = entry.unwrap();
+                {
+                    let file_path = file.path().unwrap();
+                    let file_name = file_path.file_name().unwrap();
+                    if file_name != "sing-box" && file_name != "sing-box.exe" {
+                        continue;
+                    }
+                }
+                file.unpack(file_name).unwrap();
+            }
+        } else if name.contains(".zip") {
+            let mut tmpfile = tempfile::tempfile().unwrap();
+            rsp.copy_to(&mut tmpfile)
+                .expect("Extract zip failed while copying to temporary file.");
+            let mut zip = ZipArchive::new(tmpfile).unwrap();
+            for i in 0..zip.len() {
+                let mut file = zip.by_index(i).unwrap();
+                if file.name() != "sing-box" && file.name() != "sing-box.exe" {
+                    continue;
+                }
+                let mut outfile = File::create(&file_name).unwrap();
+                io::copy(&mut file, &mut outfile).unwrap();
+            }
         }
+        // Set executable permission on Unix.
+        #[cfg(unix)]
+        set_permissions(file_name, Permissions::from_mode(0o755)).unwrap();
         return Ok(file_name.to_string());
     }
     Err("Failed to download sing-box.".to_string())
