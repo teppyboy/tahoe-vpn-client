@@ -25,5 +25,4 @@ winres = "0.1"
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
-codegen-units = 1
 panic = "abort"
