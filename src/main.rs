@@ -17,7 +17,7 @@ use users::get_current_uid;
 
 const UPDATE_URL: &str =
     "https://raw.githubusercontent.com/teppyboy/everything-v2ray/master/client/profile/sfa/";
-const SERVER_LIST: [(&str, &str); 2] = [("us", "vpn-us.json"), ("vn", "vpn-vn.json")];
+const SERVER_LIST: [(&str, &str); 3] = [("us", "vpn-us.json"), ("vn", "vpn-vn.json"), ("hk", "vpn-hk-gce.json")];
 
 fn server_from_name(name: &str) -> String {
     SERVER_LIST
