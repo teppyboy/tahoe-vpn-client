@@ -27,14 +27,15 @@ fn go_arch() -> &'static str {
 }
 
 fn dl_sing_box() -> Result<String, String> {
+    println!("Fetching sing-box latest release...");
     let client = reqwest::Client::new();
-
     let rsp = client
         .get("https://api.github.com/repos/SagerNet/sing-box/releases/latest")
         // GitHub blocks reqwest user agent.
         .header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36")
         .send()
         .expect("Failed to get latest release.");
+    println!("Parsing response...");
     let json: serde_json::Value = rsp.json().expect("Failed to parse JSON.");
     let assets = json["assets"].as_array().unwrap();
     for asset in assets {
@@ -52,6 +53,7 @@ fn dl_sing_box() -> Result<String, String> {
             .send()
             .expect("Failed to download sing-box.");
         // Create directory.
+        println!("Creating bin directory...");
         if !Path::new("bin").exists() {
             create_dir("bin").expect("Failed to create bin directory.");
         }
@@ -61,6 +63,7 @@ fn dl_sing_box() -> Result<String, String> {
         } else {
             file_name = "bin/sing-box";
         }
+        println!("Extracting sing-box...");
         // Remove old executable.
         if Path::new(file_name).exists() {
             std::fs::remove_file(file_name).expect("Failed to remove old sing-box executable.");
@@ -68,6 +71,7 @@ fn dl_sing_box() -> Result<String, String> {
         // Extract in-memory
         if name.contains(".tar.gz") {
             // tar.gz
+            println!("Extracting tar.gz...");
             let decoder = GzDecoder::new(rsp);
             let mut archive = Archive::new(decoder);
             for entry in archive.entries().unwrap() {
@@ -82,15 +86,22 @@ fn dl_sing_box() -> Result<String, String> {
                 file.unpack(file_name).unwrap();
             }
         } else if name.contains(".zip") {
+            // zip
+            println!("Extracting zip...");
             let mut tmpfile = tempfile::tempfile().unwrap();
+            println!("Temp file: {:?}", tmpfile);
             rsp.copy_to(&mut tmpfile)
                 .expect("Extract zip failed while copying to temporary file.");
             let mut zip = ZipArchive::new(tmpfile).unwrap();
             for i in 0..zip.len() {
                 let mut file = zip.by_index(i).unwrap();
-                if file.name() != "sing-box" && file.name() != "sing-box.exe" {
+                let cur_file_name = file.name().to_owned().split('/').last().unwrap().to_string();
+                println!("File: {}", cur_file_name);
+                if !cur_file_name.contains("sing-box") && !cur_file_name.contains("sing-box.exe") {
+                    println!("Skipping...");
                     continue;
                 }
+                println!("Extracting...");
                 let mut outfile = File::create(&file_name).unwrap();
                 io::copy(&mut file, &mut outfile).unwrap();
             }

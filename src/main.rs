@@ -23,7 +23,7 @@ fn server_from_name(name: &str) -> String {
     SERVER_LIST
         .iter()
         .find(|&i| i.0.trim() == name.trim())
-        .expect("Invalid server name, valid names are us and vn.")
+        .expect("Invalid server name, valid names are US, HK and VN.")
         .1
         .to_string()
 }
@@ -35,16 +35,20 @@ fn select_server(config: &Config) -> String {
     );
     let mut server: String = read!("{}\n");
     match server.as_str() {
-        "" => {
+        "\r" => {
             if config.server.as_str() == "" {
-                println!("Selecting default server (US)...");
-                server = "us".to_string();
+                println!("Selecting default server (HK)...");
+                server = "hk".to_string().to_lowercase();
             } else {
                 server = config.server.clone();
             }
         }
-        _ => (),
+        _ => {
+            server = server.to_lowercase();
+            server.pop();
+        },
     }
+    println!("Selected server: {}", server);
     server
 }
 
